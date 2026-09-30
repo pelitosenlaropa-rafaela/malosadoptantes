@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Registro interno de adopciones</title>
+
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Registro interno para gestión responsable de adopciones.">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <header class="header">
+    <div class="header-content">
+      <div>
+        <span class="eyebrow">REGISTRO INTERNO</span>
+        <h1>Adopciones responsables</h1>
+        <p class="subtitle">
+          Herramienta de consulta para rescatistas y personas autorizadas.
+        </p>
+      </div>
+
+      <div class="security-badge">
+        🔒 Acceso protegido
+      </div>
+    </div>
+  </header>
+
+
+  <main class="container">
+
+    <section class="notice">
+      <div class="notice-icon">⚠️</div>
+
+      <div>
+        <h2>Uso interno</h2>
+        <p>
+          Esta información está destinada exclusivamente a personas autorizadas
+          que participan en procesos de rescate y adopción responsable.
+          Antes de tomar una decisión, verificá los datos y las fuentes
+          disponibles para cada registro.
+        </p>
+      </div>
+    </section>
+
+
+    <section class="search-section">
+
+      <label for="searchInput">Buscar persona</label>
+
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+
+        <input
+          type="search"
+          id="searchInput"
+          placeholder="Escribí un nombre o apellido..."
+          autocomplete="off"
+          aria-label="Buscar persona"
+        >
+
+        <button
+          type="button"
+          id="clearSearch"
+          class="clear-button"
+          aria-label="Limpiar búsqueda"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="search-info">
+        <span id="resultCount">0 registros</span>
+        <span id="searchStatus"></span>
+      </div>
+
+    </section>
+
+
+    <section class="filters">
+
+      <button
+        type="button"
+        class="filter-button active"
+        data-filter="todos"
+      >
+        Todos
+      </button>
+
+      <button
+        type="button"
+        class="filter-button"
+        data-filter="revisar"
+      >
+        Revisar
+      </button>
+
+      <button
+        type="button"
+        class="filter-button"
+        data-filter="verificado"
+      >
+        Verificado
+      </button>
+
+    </section>
+
+
+    <section
+      id="recordsContainer"
+      class="records-container"
+      aria-live="polite"
+    >
+    </section>
+
+
+    <section
+      id="emptyState"
+      class="empty-state"
+      hidden
+    >
+      <div class="empty-icon">🔎</div>
+
+      <h2>No encontramos resultados</h2>
+
+      <p>
+        Probá con otro nombre o apellido.
+      </p>
+    </section>
+
+
+    <section class="privacy-box">
+
+      <h2>Recordatorio</h2>
+
+      <p>
+        Este registro debe utilizarse únicamente como herramienta interna
+        de evaluación. La información de cada persona debe mantenerse
+        respaldada por fuentes o documentación disponible para el grupo.
+      </p>
+
+    </section>
+
+  </main>
+
+
+  <footer class="footer">
+    <p>
+      Registro interno · Uso restringido
+    </p>
+
+    <p>
+      La información se encuentra protegida mediante Staticrypt.
+    </p>
+  </footer>
+
+
+  <script>
+
+    /*
+     * ============================================================
+     * REGISTROS
+     * ============================================================
+     *
+     * Cada registro utiliza esta estructura:
+     *
+     * {
+     *   nombre: "Nombre de la persona",
+     *   contacto: "Medio de contacto",
+     *   estado: "revisar",
+     *   motivo: "Descripción factual documentada",
+     *   fuente: "Fuente o referencia",
+     *   fecha: "Fecha del registro"
+     * }
+     *
+     * Estados disponibles:
+     *
+     * "revisar"
+     * "verificado"
+     *
+     * Agregá los registros autorizados dentro del array.
+     */
+
+    const registros = [
+      {
+        nombre: "Registro de ejemplo",
+        contacto: "Medio de contacto",
+        estado: "revisar",
+        motivo: "Registro pendiente de revisión por parte del grupo.",
+        fuente: "Fuente interna",
+        fecha: "2026-09-30"
+      }
+    ];
+
+
+    /*
+     * ============================================================
+     * ELEMENTOS
+     * ============================================================
+     */
+
+    const searchInput = document.getElementById("searchInput");
+    const clearSearch = document.getElementById("clearSearch");
+    const recordsContainer = document.getElementById("recordsContainer");
+    const emptyState = document.getElementById("emptyState");
+    const resultCount = document.getElementById("resultCount");
+    const searchStatus = document.getElementById("searchStatus");
+    const filterButtons = document.querySelectorAll(".filter-button");
+
+
+    let filtroActual = "todos";
+
+
+    /*
+     * ============================================================
+     * ESCAPAR HTML
+     * ============================================================
+     *
+     * Evita que un texto introducido en los registros pueda
+     * interpretarse como código HTML.
+     */
+
+    function escapeHTML(texto) {
+
+      if (!texto) {
+        return "";
+      }
+
+      return String(texto)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+
+    /*
+     * ============================================================
+     * CREAR TARJETA
+     * ============================================================
+     */
+
+    function crearTarjeta(registro) {
+
+      const estadoTexto =
+        registro.estado === "verificado"
+          ? "Verificado"
+          : "Revisar";
+
+
+      const claseEstado =
+        registro.estado === "verificado"
+          ? "status-verified"
+          : "status-review";
+
+
+      return `
+        <article class="record-card">
+
+          <div class="record-header">
+
+            <div class="person-info">
+
+              <h2>
+                ${escapeHTML(registro.nombre)}
+              </h2>
+
+              <span class="status ${claseEstado}">
+                ${estadoTexto}
+              </span>
+
+            </div>
+
+          </div>
+
+
+          <div class="record-body">
+
+            ${
+              registro.contacto
+                ? `
+                  <div class="record-field">
+
+                    <span class="field-label">
+                      CONTACTO / MEDIO
+                    </span>
+
+                    <span class="field-value">
+                      ${escapeHTML(registro.contacto)}
+                    </span>
+
+                  </div>
+                `
+                : ""
+            }
+
+
+            <div class="record-field">
+
+              <span class="field-label">
+                INFORMACIÓN REGISTRADA
+              </span>
+
+              <p class="field-value">
+                ${escapeHTML(registro.motivo)}
+              </p>
+
+            </div>
+
+
+            ${
+              registro.fuente
+                ? `
+                  <div class="record-field">
+
+                    <span class="field-label">
+                      FUENTE / REFERENCIA
+                    </span>
+
+                    <span class="field-value">
+                      ${escapeHTML(registro.fuente)}
+                    </span>
+
+                  </div>
+                `
+                : ""
+            }
+
+
+            ${
+              registro.fecha
+                ? `
+                  <div class="record-date">
+                    Registro: ${escapeHTML(registro.fecha)}
+                  </div>
+                `
+                : ""
+            }
+
+          </div>
+
+        </article>
+      `;
+    }
+
+
+    /*
+     * ============================================================
+     * FILTRAR REGISTROS
+     * ============================================================
+     */
+
+    function obtenerRegistrosFiltrados() {
+
+      const texto = searchInput.value
+        .trim()
+        .toLowerCase();
+
+
+      return registros.filter(registro => {
+
+        const coincideNombre =
+          registro.nombre
+            .toLowerCase()
+            .includes(texto);
+
+
+        const coincideFiltro =
+          filtroActual === "todos" ||
+          registro.estado === filtroActual;
+
+
+        return coincideNombre && coincideFiltro;
+
+      });
+
+    }
+
+
+    /*
+     * ============================================================
+     * MOSTRAR REGISTROS
+     * ============================================================
+     */
+
+    function renderizarRegistros() {
+
+      const resultados = obtenerRegistrosFiltrados();
+
+
+      recordsContainer.innerHTML = "";
+
+
+      if (resultados.length === 0) {
+
+        emptyState.hidden = false;
+
+      } else {
+
+        emptyState.hidden = true;
+
+        recordsContainer.innerHTML =
+          resultados
+            .map(crearTarjeta)
+            .join("");
+
+      }
+
+
+      resultCount.textContent =
+        resultados.length === 1
+          ? "1 registro"
+          : `${resultados.length} registros`;
+
+
+      const textoBusqueda =
+        searchInput.value.trim();
+
+
+      if (textoBusqueda) {
+
+        searchStatus.textContent =
+          `Resultados para "${textoBusqueda}"`;
+
+      } else {
+
+        searchStatus.textContent = "";
+
+      }
+
+    }
+
+
+    /*
+     * ============================================================
+     * BUSCADOR
+     * ============================================================
+     */
+
+    searchInput.addEventListener("input", () => {
+
+      renderizarRegistros();
+
+    });
+
+
+    /*
+     * ============================================================
+     * LIMPIAR BUSCADOR
+     * ============================================================
+     */
+
+    clearSearch.addEventListener("click", () => {
+
+      searchInput.value = "";
+
+      searchInput.focus();
+
+      renderizarRegistros();
+
+    });
+
+
+    /*
+     * ============================================================
+     * FILTROS
+     * ============================================================
+     */
+
+    filterButtons.forEach(button => {
+
+      button.addEventListener("click", () => {
+
+        filterButtons.forEach(item => {
+          item.classList.remove("active");
+        });
+
+
+        button.classList.add("active");
+
+
+        filtroActual =
+          button.dataset.filter;
+
+
+        renderizarRegistros();
+
+      });
+
+    });
+
+
+    /*
+     * ============================================================
+     * ATAJO DE TECLADO
+     * ============================================================
+     *
+     * Presionar "/" lleva directamente al buscador.
+     */
+
+    document.addEventListener("keydown", event => {
+
+      if (
+        event.key === "/" &&
+        document.activeElement !== searchInput
+      ) {
+
+        event.preventDefault();
+
+        searchInput.focus();
+
+      }
+
+    });
+
+
+    /*
+     * ============================================================
+     * INICIO
+     * ============================================================
+     */
+
+    renderizarRegistros();
+
+  </script>
+
+
+  <script src="script.js"></script>
+
+</body>
+</html>
